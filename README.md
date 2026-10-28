@@ -122,4 +122,4 @@ git push origin v1.0.0
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
