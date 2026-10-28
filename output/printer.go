@@ -54,11 +54,15 @@ func (p *Printer) Result(r hunter.Result) {
 		fmt.Printf("\n%s %s\n", p.c(colorBold+colorYellow, "[PATTERN]"), p.c(colorYellow, r.Path))
 	case "SUSPICIOUS":
 		fmt.Printf("\n%s %s\n", p.c(colorBold+colorRed, "[SUSPICIOUS]"), p.c(colorRed, r.Path))
+	case "ENV":
+		fmt.Printf("\n%s %s\n", p.c(colorBold+colorCyan, "[ENV]"), p.c(colorCyan, r.Path))
 	}
 
 	if r.Contents != "" {
-		contents := strings.TrimSpace(r.Contents)
-		fmt.Printf("       Contents: %s\n", contents)
+		fmt.Printf("       Contents: %s\n", strings.TrimSpace(r.Contents))
+	}
+	if r.Permissions != "" {
+		fmt.Printf("       Perms: %s\n", p.c(colorCyan, r.Permissions))
 	}
 	if r.Reason != "" {
 		fmt.Printf("       Reason: %s\n", p.c(colorYellow, r.Reason))

@@ -28,8 +28,10 @@ func windowsPaths() []string {
 		`C:\Users\Administrator\Documents`,
 		`C:\Users\*\Desktop`,
 		`C:\Users\*\Documents`,
-		`C:\`,
+		`C:\Users\*`,
 		`C:\inetpub`,
 		`C:\xampp`,
+		`C:\ProgramData`,
+		`C:\Windows\Temp`,
 	}
 }

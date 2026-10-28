@@ -3,6 +3,7 @@ package hunter
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -23,19 +24,31 @@ type Config struct {
 	ExtraNames []string
 	Pattern    string
 	Dir        string
+	MaxDepth   int
 }
 
 type Result struct {
-	Path     string `json:"path"`
-	Contents string `json:"contents"`
-	Type     string `json:"type"`
-	Reason   string `json:"reason,omitempty"`
+	Path        string `json:"path"`
+	Contents    string `json:"contents"`
+	Type        string `json:"type"`
+	Reason      string `json:"reason,omitempty"`
+	Permissions string `json:"permissions,omitempty"`
 }
 
 func Hunt(cfg Config) []Result {
+	initScanner()
+
 	names := make([]string, len(DefaultFlagNames))
 	copy(names, DefaultFlagNames)
 	names = append(names, cfg.ExtraNames...)
+
+	var customRe *regexp.Regexp
+	if cfg.Pattern != "" {
+		re, err := regexp.Compile(cfg.Pattern)
+		if err == nil {
+			customRe = re
+		}
+	}
 
 	var results []Result
 	seen := make(map[string]bool)
@@ -45,6 +58,10 @@ func Hunt(cfg Config) []Result {
 			seen[r.Path] = true
 			results = append(results, r)
 		}
+	}
+
+	for _, r := range scanEnvironment() {
+		addResult(r)
 	}
 
 	var dirs []string
@@ -61,9 +78,8 @@ func Hunt(cfg Config) []Result {
 	}
 
 	for _, dir := range dirs {
-		expanded := expandGlobs(dir)
-		for _, d := range expanded {
-			scanDir(d, names, cfg, seen, addResult)
+		for _, d := range expandGlobs(dir) {
+			scanDir(d, names, customRe, cfg, seen, addResult)
 		}
 	}
 
@@ -81,13 +97,22 @@ func expandGlobs(pattern string) []string {
 	return matches
 }
 
-func scanDir(dir string, names []string, cfg Config, seen map[string]bool, addResult func(Result)) {
+func scanDir(dir string, names []string, customRe *regexp.Regexp, cfg Config, seen map[string]bool, addResult func(Result)) {
 	filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 
 		if d.IsDir() {
+			if cfg.MaxDepth > 0 {
+				rel, relErr := filepath.Rel(dir, path)
+				if relErr == nil && rel != "." {
+					depth := strings.Count(rel, string(os.PathSeparator)) + 1
+					if depth > cfg.MaxDepth {
+						return filepath.SkipDir
+					}
+				}
+			}
 			base := d.Name()
 			if base == ".git" || base == "node_modules" || base == "__pycache__" || base == ".svn" {
 				return filepath.SkipDir
@@ -106,46 +131,111 @@ func scanDir(dir string, names []string, cfg Config, seen map[string]bool, addRe
 		}
 
 		fname := d.Name()
+		perms := info.Mode().String()
 
 		for _, name := range names {
 			if strings.EqualFold(fname, name) {
-				contents := readFileContents(path, info.Size())
 				addResult(Result{
-					Path:     path,
-					Contents: contents,
-					Type:     "FLAG",
+					Path:        path,
+					Contents:    readDisplay(path, info.Size()),
+					Type:        "FLAG",
+					Permissions: perms,
 				})
 				break
 			}
 		}
 
-		if cfg.Pattern != "" {
-			if matchPattern(path, info.Size(), cfg.Pattern) {
-				contents := readFileContents(path, info.Size())
-				if !seen[path] {
+		if info.Size() > 0 && info.Size() <= maxReadSize {
+			if matched, pat := matchCTFPatterns(path, info.Size()); matched && !seen[path] {
+				addResult(Result{
+					Path:        path,
+					Contents:    readDisplay(path, info.Size()),
+					Type:        "PATTERN",
+					Reason:      "matched: " + pat,
+					Permissions: perms,
+				})
+			}
+
+			if customRe != nil && !seen[path] {
+				if matchCustomPattern(path, info.Size(), customRe) {
 					addResult(Result{
-						Path:     path,
-						Contents: contents,
-						Type:     "PATTERN",
-						Reason:   "matched pattern: " + cfg.Pattern,
+						Path:        path,
+						Contents:    readDisplay(path, info.Size()),
+						Type:        "PATTERN",
+						Reason:      "matched: " + cfg.Pattern,
+						Permissions: perms,
 					})
 				}
 			}
 		}
 
-		if isSuspicious(path, info) {
-			contents := readFileContents(path, info.Size())
+		if isSuspicious(path, info) && !seen[path] {
+			contents := readDisplay(path, info.Size())
 			reason := detectReason(path, info, contents)
-			if reason != "" && !seen[path] {
+			if reason != "" {
 				addResult(Result{
-					Path:     path,
-					Contents: contents,
-					Type:     "SUSPICIOUS",
-					Reason:   reason,
+					Path:        path,
+					Contents:    contents,
+					Type:        "SUSPICIOUS",
+					Reason:      reason,
+					Permissions: perms,
 				})
 			}
 		}
 
 		return nil
 	})
+}
+
+func scanEnvironment() []Result {
+	var results []Result
+
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 || parts[1] == "" {
+			continue
+		}
+		key, value := parts[0], parts[1]
+
+		keyLower := strings.ToLower(key)
+		flagKey := strings.Contains(keyLower, "flag") ||
+			strings.Contains(keyLower, "secret") ||
+			strings.Contains(keyLower, "ctf") ||
+			strings.Contains(keyLower, "proof")
+
+		patternMatch := false
+		for _, re := range compiledCTF {
+			if re.MatchString(value) {
+				patternMatch = true
+				break
+			}
+		}
+
+		hashMatch := hashPattern.MatchString(strings.TrimSpace(value))
+
+		if !flagKey && !patternMatch && !hashMatch {
+			continue
+		}
+
+		var reasons []string
+		reasons = append(reasons, "environment variable")
+		if flagKey {
+			reasons = append(reasons, "flag-related key")
+		}
+		if patternMatch {
+			reasons = append(reasons, "CTF flag pattern")
+		}
+		if hashMatch {
+			reasons = append(reasons, "hash-like value")
+		}
+
+		results = append(results, Result{
+			Path:     "$" + key,
+			Contents: value,
+			Type:     "ENV",
+			Reason:   strings.Join(reasons, ", "),
+		})
+	}
+
+	return results
 }

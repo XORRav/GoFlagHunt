@@ -25,8 +25,14 @@ Hunts for CTF/exam flag files (`user.txt`, `root.txt`, `flag.txt`, etc.) across 
 
 - **Filename Hunting** — searches for known flag filenames (`flag.txt`, `user.txt`, `root.txt`, `proof.txt`, `local.txt`, `network-secret.txt`, `credentials.txt`, `secret.txt`)
 - **Smart Search Order** — hits high-probability locations first (`/root/`, `/home/*/`, admin desktops) before crawling everything
-- **Content Pattern Matching** — regex search inside files (e.g. `HTB{.*}`, `FLAG{.*}`)
+- **Built-in CTF Pattern Matching** — auto-detects common flag formats (`HTB{...}`, `FLAG{...}`, `THM{...}`, `CPTS{...}`, `CTF{...}`, `OSCP{...}`, `PNPT{...}`) without any flags needed
+- **Custom Pattern Matching** — regex search inside files via `--pattern` for non-standard flag formats
 - **Suspicious File Detection** — finds small files with hash-like content in privileged directories
+- **Environment Variable Scanning** — checks env vars for flag-related keys, CTF patterns, and hash-like values
+- **File Permissions** — displays file permissions alongside each result
+- **Depth Limiting** — `--depth N` to control how deep the directory crawl goes
+- **Watch Mode** — `--watch` to continuously monitor for new flag files appearing
+- **Exfil Mode** — `--exfil <file>` to dump all found flags to a single file for easy grab
 - **Cross-Platform** — single static binary for Linux and Windows
 - **Zero Dependencies** — Go stdlib only
 
@@ -40,6 +46,9 @@ Flags:
   --name string    Additional filename to hunt for (can be repeated)
   --pattern string Regex pattern to match inside files
   --dir string     Start search from this directory only
+  --depth int      Limit directory recursion depth (0 = unlimited)
+  --exfil string   Write all found flags to this file
+  --watch          Keep running and alert when new flag files appear
   --no-color       Disable colored output
   --quiet          Only print found flags, no banner/status
   --json           Output results as JSON
@@ -62,11 +71,23 @@ Flags:
 # Scan a specific directory
 ./goreap --dir /var/www/html
 
-# Pattern match inside files
-./goreap --pattern "HTB\{.*\}"
+# Limit scan depth
+./goreap --dir /home --depth 3
+
+# Custom pattern match inside files
+./goreap --pattern "SECRET_[A-Z0-9]+"
+
+# Dump all flags to a file for exfil
+./goreap --exfil /tmp/loot.txt
+
+# Watch mode - monitor for new flags
+./goreap --watch
 
 # Quiet JSON output for scripting
 ./goreap --quiet --json
+
+# Scan a network share (Windows)
+./goreap --dir \\server\share
 ```
 
 ## Output
@@ -81,17 +102,29 @@ Flags:
 [*] Running as: root
 [*] Quick scan - checking common flag locations...
 
+[ENV] $CTF_FLAG
+       Contents: FLAG{3nv_v4r_l34k}
+       Reason: environment variable, flag-related key, CTF flag pattern
+
 [FLAG] /root/root.txt
        Contents: d41d8cd98f00b204e9800998ecf8427e
+       Perms: -rw-------
 
 [FLAG] /home/svc_user/user.txt
        Contents: 7c6a180b36896a65c4e635714120a536
+       Perms: -rw-r--r--
+
+[PATTERN] /opt/app/config.yml
+       Contents: HTB{y0u_g0t_th3_fl4g}
+       Perms: -rw-r--r--
+       Reason: matched: HTB\{[^}]+\}
 
 [SUSPICIOUS] /opt/.secret
        Contents: 5f4dcc3b5aa765d61d8327deb882cf99
-       Reason: small file, hash-like content
+       Perms: -rw-------
+       Reason: small file, hash-like content, hidden file
 
-[*] Scan complete - 3 results found in 0.42s
+[*] Scan complete - 5 results found in 0.42s
 ```
 
 ## Build From Source
@@ -116,8 +149,8 @@ GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o goreap-windows-amd64.exe 
 Push a version tag and GitHub Actions builds + publishes binaries automatically:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 ## License
