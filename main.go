@@ -12,6 +12,8 @@ import (
 	"github.com/XORRav/goreap/output"
 )
 
+var version = "dev"
+
 type arrayFlag []string
 
 func (a *arrayFlag) String() string { return fmt.Sprintf("%v", *a) }
@@ -30,8 +32,14 @@ func main() {
 	noColor := flag.Bool("no-color", false, "Disable colored output")
 	quiet := flag.Bool("quiet", false, "Only print found flags, no banner/status")
 	jsonOut := flag.Bool("json", false, "Output results as JSON")
+	showVersion := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("goreap %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
+		os.Exit(0)
+	}
 
 	cfg := hunter.Config{
 		Deep:       *deep,
