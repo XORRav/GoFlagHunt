@@ -1,4 +1,4 @@
-# GOreap
+# WraithFlag
 
 **Portable post-exploitation flag finder written in Go.**
 
@@ -6,15 +6,15 @@ Drop the binary on a box, run it, get your flags. No dependencies, no install, j
 
 ## Quick Start
 
-Grab the latest binary from [Releases](https://github.com/XORRav/goreap/releases), drop it on the target, and run:
+Grab the latest binary from [Releases](https://github.com/XORRav/wraithflag/releases), drop it on the target, and run:
 
 ```bash
 # Linux
-chmod +x goreap-linux-amd64
-./goreap-linux-amd64
+chmod +x wraithflag-linux-amd64
+./wraithflag-linux-amd64
 
 # Windows
-goreap-windows-amd64.exe
+wraithflag-windows-amd64.exe
 ```
 
 ## What It Does
@@ -39,7 +39,7 @@ Hunts for CTF/exam flag files (`user.txt`, `root.txt`, `flag.txt`, etc.) across 
 ## Usage
 
 ```
-goreap [flags]
+wraithflag [flags]
 
 Flags:
   --deep           Full filesystem crawl (default: quick common-paths scan)
@@ -60,41 +60,41 @@ Flags:
 
 ```bash
 # Quick scan - checks common flag locations
-./goreap
+./wraithflag
 
 # Deep scan - crawls entire filesystem
-./goreap --deep
+./wraithflag --deep
 
 # Hunt for specific filenames
-./goreap --name secret_key.txt --name creds.txt
+./wraithflag --name secret_key.txt --name creds.txt
 
 # Scan a specific directory
-./goreap --dir /var/www/html
+./wraithflag --dir /var/www/html
 
 # Limit scan depth
-./goreap --dir /home --depth 3
+./wraithflag --dir /home --depth 3
 
 # Custom pattern match inside files
-./goreap --pattern "SECRET_[A-Z0-9]+"
+./wraithflag --pattern "SECRET_[A-Z0-9]+"
 
 # Dump all flags to a file for exfil
-./goreap --exfil /tmp/loot.txt
+./wraithflag --exfil /tmp/loot.txt
 
 # Watch mode - monitor for new flags
-./goreap --watch
+./wraithflag --watch
 
 # Quiet JSON output for scripting
-./goreap --quiet --json
+./wraithflag --quiet --json
 
 # Scan a network share (Windows)
-./goreap --dir \\server\share
+./wraithflag --dir \\server\share
 ```
 
 ## Output
 
 ```
 ╔═══════════════════════════════════════╗
-║          G O r e a p                  ║
+║      W R A I T H F L A G             ║
 ║       Post-Exploitation Loot          ║
 ╚═══════════════════════════════════════╝
 
@@ -133,15 +133,15 @@ Requires Go 1.22+.
 
 ```bash
 # Clone
-git clone https://github.com/XORRav/goreap.git
-cd goreap
+git clone https://github.com/XORRav/wraithflag.git
+cd wraithflag
 
 # Build for current OS
-go build -ldflags="-s -w" -o goreap .
+go build -ldflags="-s -w" -o wraithflag .
 
 # Cross-compile
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o goreap-linux-amd64 .
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o goreap-windows-amd64.exe .
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o wraithflag-linux-amd64 .
+GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o wraithflag-windows-amd64.exe .
 ```
 
 ## Releasing
@@ -149,8 +149,8 @@ GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o goreap-windows-amd64.exe 
 Push a version tag and GitHub Actions builds + publishes binaries automatically:
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 ## License

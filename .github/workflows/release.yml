@@ -20,16 +20,16 @@ jobs:
 
       - name: Build Linux amd64
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o goreap-linux-amd64 .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o wraithflag-linux-amd64 .
 
       - name: Build Windows amd64
         run: |
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o goreap-windows-amd64.exe .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o wraithflag-windows-amd64.exe .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            goreap-linux-amd64
-            goreap-windows-amd64.exe
+            wraithflag-linux-amd64
+            wraithflag-windows-amd64.exe

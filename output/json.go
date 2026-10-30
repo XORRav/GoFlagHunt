@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XORRav/goreap/hunter"
+	"github.com/XORRav/wraithflag/hunter"
 )
 
 func PrintJSON(results []hunter.Result) {

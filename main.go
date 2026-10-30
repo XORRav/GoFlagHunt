@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/XORRav/goreap/hunter"
-	"github.com/XORRav/goreap/output"
+	"github.com/XORRav/wraithflag/hunter"
+	"github.com/XORRav/wraithflag/output"
 )
 
 var version = "dev"
@@ -42,7 +42,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("goreap %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("wraithflag %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
 		os.Exit(0)
 	}
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/XORRav/goreap/hunter"
+	"github.com/XORRav/wraithflag/hunter"
 )
 
 const (
@@ -35,7 +35,7 @@ func (p *Printer) c(color, text string) string {
 func (p *Printer) Banner() {
 	banner := `
 ` + p.c(colorCyan, `╔═══════════════════════════════════════╗`) + `
-` + p.c(colorCyan, `║`) + p.c(colorBold+colorGreen, `          G O r e a p                 `) + p.c(colorCyan, `║`) + `
+` + p.c(colorCyan, `║`) + p.c(colorBold+colorGreen, `          W R A I T H F L A G`) + p.c(colorCyan, `║`) + `
 ` + p.c(colorCyan, `║`) + p.c(colorGreen, `       Post-Exploitation Loot        `) + p.c(colorCyan, `║`) + `
 ` + p.c(colorCyan, `╚═══════════════════════════════════════╝`) + `
 `
