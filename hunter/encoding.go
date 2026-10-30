@@ -8,8 +8,11 @@ import (
 )
 
 func checkEncodedContent(path string, size int64) []Result {
-	data, skip := readRaw(path, size)
-	if skip || data == nil {
+	if size > maxEncodeSize || size == 0 {
+		return nil
+	}
+	data, skip := readFileSafe(path, maxEncodeSize)
+	if skip {
 		return nil
 	}
 

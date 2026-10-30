@@ -145,53 +145,55 @@ func scanDir(dir string, names []string, customRe *regexp.Regexp, cfg Config, se
 			}
 		}
 
-		if info.Size() > 0 && info.Size() <= maxReadSize {
-			if matched, pat := matchCTFPatterns(path, info.Size()); matched && !seen[path] {
-				addResult(Result{
-					Path:        path,
-					Contents:    readDisplay(path, info.Size()),
-					Type:        "PATTERN",
-					Reason:      "matched: " + pat,
-					Permissions: perms,
-				})
-			}
-
-			if customRe != nil && !seen[path] {
-				if matchCustomPattern(path, info.Size(), customRe) {
+		if !shouldSkipContent(fname) && info.Size() > 0 {
+			if info.Size() <= maxPatternSize {
+				if matched, pat := matchCTFPatterns(path, info.Size()); matched && !seen[path] {
 					addResult(Result{
 						Path:        path,
 						Contents:    readDisplay(path, info.Size()),
 						Type:        "PATTERN",
-						Reason:      "matched: " + cfg.Pattern,
+						Reason:      "matched: " + pat,
+						Permissions: perms,
+					})
+				}
+
+				if customRe != nil && !seen[path] {
+					if matchCustomPattern(path, info.Size(), customRe) {
+						addResult(Result{
+							Path:        path,
+							Contents:    readDisplay(path, info.Size()),
+							Type:        "PATTERN",
+							Reason:      "matched: " + cfg.Pattern,
+							Permissions: perms,
+						})
+					}
+				}
+			}
+
+			if isSuspicious(path, info) && !seen[path] {
+				contents := readDisplay(path, info.Size())
+				reason := detectReason(path, info, contents)
+				if reason != "" {
+					addResult(Result{
+						Path:        path,
+						Contents:    contents,
+						Type:        "SUSPICIOUS",
+						Reason:      reason,
 						Permissions: perms,
 					})
 				}
 			}
-		}
 
-		if isSuspicious(path, info) && !seen[path] {
-			contents := readDisplay(path, info.Size())
-			reason := detectReason(path, info, contents)
-			if reason != "" {
-				addResult(Result{
-					Path:        path,
-					Contents:    contents,
-					Type:        "SUSPICIOUS",
-					Reason:      reason,
-					Permissions: perms,
-				})
+			if info.Size() <= maxEncodeSize && !seen[path] {
+				for _, r := range checkEncodedContent(path, info.Size()) {
+					r.Permissions = perms
+					addResult(r)
+				}
 			}
 		}
 
 		for _, r := range scanADS(path) {
 			if !seen[r.Path] {
-				r.Permissions = perms
-				addResult(r)
-			}
-		}
-
-		if !seen[path] {
-			for _, r := range checkEncodedContent(path, info.Size()) {
 				r.Permissions = perms
 				addResult(r)
 			}

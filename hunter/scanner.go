@@ -2,10 +2,16 @@ package hunter
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 )
 
-const maxReadSize = 1024 * 1024
+const (
+	maxReadSize    = 1024 * 1024 // 1MB — for confirmed flag files by name
+	maxPatternSize = 100 * 1024  // 100KB — for pattern scanning
+	maxEncodeSize  = 10 * 1024   // 10KB — for encoded content detection
+)
 
 var DefaultCTFPatterns = []string{
 	`HTB\{[^}]+\}`,
@@ -18,18 +24,21 @@ var DefaultCTFPatterns = []string{
 	`PNPT\{[^}]+\}`,
 }
 
-type cachedFile struct {
-	data []byte
-	skip bool
+var skipExts = map[string]bool{
+	".so": true, ".o": true, ".a": true, ".ko": true,
+	".gz": true, ".tar": true, ".zip": true, ".bz2": true, ".xz": true, ".zst": true,
+	".jar": true, ".war": true, ".deb": true, ".rpm": true,
+	".pyc": true, ".class": true, ".whl": true,
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true, ".ico": true, ".svg": true,
+	".mp3": true, ".mp4": true, ".avi": true, ".mkv": true, ".wav": true, ".flac": true,
+	".pdf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".pptx": true,
+	".sqlite": true, ".db": true, ".cache": true,
+	".exe": true, ".dll": true, ".elf": true, ".bin": true,
 }
 
-var (
-	cache       map[string]*cachedFile
-	compiledCTF []*regexp.Regexp
-)
+var compiledCTF []*regexp.Regexp
 
 func initScanner() {
-	cache = make(map[string]*cachedFile)
 	compiledCTF = nil
 	for _, p := range DefaultCTFPatterns {
 		if re, err := regexp.Compile(p); err == nil {
@@ -38,37 +47,36 @@ func initScanner() {
 	}
 }
 
-func readRaw(path string, size int64) ([]byte, bool) {
-	if cf, ok := cache[path]; ok {
-		return cf.data, cf.skip
-	}
-	cf := &cachedFile{}
-	if size > maxReadSize || size == 0 {
-		cf.skip = true
-		cache[path] = cf
+func shouldSkipContent(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return skipExts[ext]
+}
+
+func readFileSafe(path string, maxSize int64) ([]byte, bool) {
+	if maxSize <= 0 {
 		return nil, true
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		cf.skip = true
-		cache[path] = cf
+		return nil, true
+	}
+	if int64(len(data)) > maxSize {
 		return nil, true
 	}
 	for _, b := range data {
 		if b == 0 {
-			cf.skip = true
-			cache[path] = cf
 			return nil, true
 		}
 	}
-	cf.data = data
-	cache[path] = cf
 	return data, false
 }
 
 func readDisplay(path string, size int64) string {
-	data, skip := readRaw(path, size)
-	if skip || data == nil {
+	if size > maxReadSize || size == 0 {
+		return ""
+	}
+	data, skip := readFileSafe(path, maxReadSize)
+	if skip {
 		return ""
 	}
 	s := string(data)
@@ -79,16 +87,22 @@ func readDisplay(path string, size int64) string {
 }
 
 func matchCustomPattern(path string, size int64, re *regexp.Regexp) bool {
-	data, skip := readRaw(path, size)
-	if skip || data == nil {
+	if size > maxPatternSize || size == 0 {
+		return false
+	}
+	data, skip := readFileSafe(path, maxPatternSize)
+	if skip {
 		return false
 	}
 	return re.Match(data)
 }
 
 func matchCTFPatterns(path string, size int64) (bool, string) {
-	data, skip := readRaw(path, size)
-	if skip || data == nil {
+	if size > maxPatternSize || size == 0 {
+		return false, ""
+	}
+	data, skip := readFileSafe(path, maxPatternSize)
+	if skip {
 		return false, ""
 	}
 	for i, re := range compiledCTF {
