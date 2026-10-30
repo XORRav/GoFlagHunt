@@ -183,6 +183,20 @@ func scanDir(dir string, names []string, customRe *regexp.Regexp, cfg Config, se
 			}
 		}
 
+		for _, r := range scanADS(path) {
+			if !seen[r.Path] {
+				r.Permissions = perms
+				addResult(r)
+			}
+		}
+
+		if !seen[path] {
+			for _, r := range checkEncodedContent(path, info.Size()) {
+				r.Permissions = perms
+				addResult(r)
+			}
+		}
+
 		return nil
 	})
 }

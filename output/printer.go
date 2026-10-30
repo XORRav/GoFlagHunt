@@ -12,8 +12,9 @@ const (
 	colorRed    = "\033[31m"
 	colorGreen  = "\033[32m"
 	colorYellow = "\033[33m"
-	colorCyan   = "\033[36m"
-	colorBold   = "\033[1m"
+	colorMagenta = "\033[35m"
+	colorCyan    = "\033[36m"
+	colorBold    = "\033[1m"
 )
 
 type Printer struct {
@@ -56,6 +57,10 @@ func (p *Printer) Result(r hunter.Result) {
 		fmt.Printf("\n%s %s\n", p.c(colorBold+colorRed, "[SUSPICIOUS]"), p.c(colorRed, r.Path))
 	case "ENV":
 		fmt.Printf("\n%s %s\n", p.c(colorBold+colorCyan, "[ENV]"), p.c(colorCyan, r.Path))
+	case "ADS":
+		fmt.Printf("\n%s %s\n", p.c(colorBold+colorMagenta, "[ADS]"), p.c(colorMagenta, r.Path))
+	case "ENCODED":
+		fmt.Printf("\n%s %s\n", p.c(colorBold+colorMagenta, "[ENCODED]"), p.c(colorMagenta, r.Path))
 	}
 
 	if r.Contents != "" {

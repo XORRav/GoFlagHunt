@@ -27,6 +27,8 @@ Hunts for CTF/exam flag files (`user.txt`, `root.txt`, `flag.txt`, etc.) across 
 - **Smart Search Order** — hits high-probability locations first (`/root/`, `/home/*/`, admin desktops) before crawling everything
 - **Built-in CTF Pattern Matching** — auto-detects common flag formats (`HTB{...}`, `FLAG{...}`, `THM{...}`, `CPTS{...}`, `CTF{...}`, `OSCP{...}`, `PNPT{...}`) without any flags needed
 - **Custom Pattern Matching** — regex search inside files via `--pattern` for non-standard flag formats
+- **NTFS Alternate Data Streams** — detects flags hidden in ADS (the `hm.txt:root.txt:$DATA` trick), auto-reads hidden stream contents
+- **Encoded Flag Detection** — tries base64 and hex decoding on file contents, checks if decoded text matches CTF patterns
 - **Suspicious File Detection** — finds small files with hash-like content in privileged directories
 - **Environment Variable Scanning** — checks env vars for flag-related keys, CTF patterns, and hash-like values
 - **File Permissions** — displays file permissions alongside each result
@@ -124,7 +126,17 @@ Flags:
        Perms: -rw-------
        Reason: small file, hash-like content, hidden file
 
-[*] Scan complete - 5 results found in 0.42s
+[ADS] C:\Users\Administrator\Desktop\hm.txt:root.txt
+       Contents: afbc5bd4b615a60648cec41c6ac92530
+       Perms: -rw-rw-rw-
+       Reason: NTFS alternate data stream
+
+[ENCODED] /tmp/payload.b64
+       Contents: FLAG{y0u_d0c0d3d_m3}
+       Perms: -rw-r--r--
+       Reason: base64-encoded flag content
+
+[*] Scan complete - 7 results found in 0.42s
 ```
 
 ## Build From Source
