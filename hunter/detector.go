@@ -19,6 +19,8 @@ var noisyDirs = []string{
 	"__pycache__", ".npm", ".nvm", ".rustup",
 	"nuclei-templates", "go-build", ".gradle",
 	".m2", ".pip", ".venv", "venv",
+	".bundle", "docker/image", "docker/overlay2",
+	"flatpak/repo", "flatpak/runtime",
 }
 
 func init() {

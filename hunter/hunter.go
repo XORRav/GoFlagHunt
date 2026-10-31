@@ -289,7 +289,7 @@ func scanDir(dir string, names []string, customRe *regexp.Regexp, cfg Config, is
 				}
 			}
 
-			if info.Size() <= maxEncodeSize && !isSeen(displayPath) {
+			if info.Size() <= maxEncodeSize && !isSeen(displayPath) && !isNoisyPath(path) {
 				for _, r := range checkEncodedContent(readPath, info.Size()) {
 					r.Permissions = perms
 					r.Path = displayPath

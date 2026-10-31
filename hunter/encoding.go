@@ -73,7 +73,7 @@ func checkEncodedContent(path string, size int64) []Result {
 	}
 
 	if reversed := tryReverse(content); reversed != "" {
-		if matchesFlag(reversed) {
+		if matchesCTFPattern(reversed) {
 			results = append(results, Result{
 				Path:       path,
 				Contents:   reversed,
@@ -166,13 +166,20 @@ func isPrintable(data []byte) bool {
 }
 
 func matchesFlag(decoded string) bool {
-	for _, re := range compiledCTF {
-		if re.MatchString(decoded) {
-			return true
-		}
+	if matchesCTFPattern(decoded) {
+		return true
 	}
 	if hashPattern.MatchString(strings.TrimSpace(decoded)) {
 		return true
+	}
+	return false
+}
+
+func matchesCTFPattern(s string) bool {
+	for _, re := range compiledCTF {
+		if re.MatchString(s) {
+			return true
+		}
 	}
 	return false
 }

@@ -19,7 +19,7 @@ var DefaultCTFPatterns = []string{
 	`THM\{[^}]+\}`,
 	`CPTS\{[^}]+\}`,
 	`CTF\{[^}]+\}`,
-	`flag\{[^}]+\}`,
+	`\bflag\{[^}]+\}`,
 	`OSCP\{[^}]+\}`,
 	`PNPT\{[^}]+\}`,
 }
