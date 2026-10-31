@@ -173,6 +173,10 @@ git tag v3.0.0
 git push origin v3.0.0
 ```
 
+## Vibe-Coded
+
+This tool was vibe-coded with [Claude Code](https://claude.com/claude-code).
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
