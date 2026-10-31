@@ -42,8 +42,8 @@ func (p *Printer) Banner() {
 	defer p.mu.Unlock()
 	banner := `
 ` + p.c(colorCyan, `╔═══════════════════════════════════════╗`) + `
-` + p.c(colorCyan, `║`) + p.c(colorBold+colorGreen, `          W R A I T H F L A G`) + p.c(colorCyan, `║`) + `
-` + p.c(colorCyan, `║`) + p.c(colorGreen, `       Post-Exploitation Loot        `) + p.c(colorCyan, `║`) + `
+` + p.c(colorCyan, `║`) + p.c(colorBold+colorGreen, `          W R A I T H F L A G          `) + p.c(colorCyan, `║`) + `
+` + p.c(colorCyan, `║`) + p.c(colorGreen, `         Post-Exploitation Loot        `) + p.c(colorCyan, `║`) + `
 ` + p.c(colorCyan, `╚═══════════════════════════════════════╝`) + `
 `
 	fmt.Println(banner)
