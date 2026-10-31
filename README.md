@@ -169,8 +169,8 @@ GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o wraithflag-windows-amd64.
 Push a version tag and GitHub Actions builds + publishes binaries automatically:
 
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v3.0.1
+git push origin v3.0.1
 ```
 
 ## Vibe-Coded
