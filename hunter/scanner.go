@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	maxReadSize    = 1024 * 1024 // 1MB — for confirmed flag files by name
-	maxPatternSize = 100 * 1024  // 100KB — for pattern scanning
-	maxEncodeSize  = 10 * 1024   // 10KB — for encoded content detection
+	maxReadSize    = 1024 * 1024
+	maxPatternSize = 100 * 1024
+	maxEncodeSize  = 10 * 1024
 )
 
 var DefaultCTFPatterns = []string{
@@ -32,7 +32,7 @@ var skipExts = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true, ".ico": true, ".svg": true,
 	".mp3": true, ".mp4": true, ".avi": true, ".mkv": true, ".wav": true, ".flac": true,
 	".pdf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".pptx": true,
-	".sqlite": true, ".db": true, ".cache": true,
+	".sqlite": true, ".db": true, ".sqlite3": true, ".cache": true,
 	".exe": true, ".dll": true, ".elf": true, ".bin": true,
 }
 
@@ -86,29 +86,50 @@ func readDisplay(path string, size int64) string {
 	return s
 }
 
-func matchCustomPattern(path string, size int64, re *regexp.Regexp) bool {
+func matchCTFPatterns(path string, size int64) (bool, string, string) {
 	if size > maxPatternSize || size == 0 {
-		return false
+		return false, "", ""
 	}
 	data, skip := readFileSafe(path, maxPatternSize)
 	if skip {
-		return false
-	}
-	return re.Match(data)
-}
-
-func matchCTFPatterns(path string, size int64) (bool, string) {
-	if size > maxPatternSize || size == 0 {
-		return false, ""
-	}
-	data, skip := readFileSafe(path, maxPatternSize)
-	if skip {
-		return false, ""
+		return false, "", ""
 	}
 	for i, re := range compiledCTF {
-		if re.Match(data) {
-			return true, DefaultCTFPatterns[i]
+		loc := re.FindIndex(data)
+		if loc != nil {
+			return true, DefaultCTFPatterns[i], extractLine(data, loc[0])
 		}
 	}
-	return false, ""
+	return false, "", ""
+}
+
+func matchCustomPattern(path string, size int64, re *regexp.Regexp) (bool, string) {
+	if size > maxPatternSize || size == 0 {
+		return false, ""
+	}
+	data, skip := readFileSafe(path, maxPatternSize)
+	if skip {
+		return false, ""
+	}
+	loc := re.FindIndex(data)
+	if loc == nil {
+		return false, ""
+	}
+	return true, extractLine(data, loc[0])
+}
+
+func extractLine(data []byte, offset int) string {
+	start := offset
+	for start > 0 && data[start-1] != '\n' {
+		start--
+	}
+	end := offset
+	for end < len(data) && data[end] != '\n' {
+		end++
+	}
+	line := strings.TrimSpace(string(data[start:end]))
+	if len(line) > 200 {
+		line = line[:200] + "..."
+	}
+	return line
 }

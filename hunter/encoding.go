@@ -3,6 +3,7 @@ package hunter
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"net/url"
 	"strings"
 	"unicode"
 )
@@ -26,10 +27,11 @@ func checkEncodedContent(path string, size int64) []Result {
 	if decoded := tryBase64(content); decoded != "" {
 		if matchesFlag(decoded) {
 			results = append(results, Result{
-				Path:     path,
-				Contents: decoded,
-				Type:     "ENCODED",
-				Reason:   "base64-encoded flag content",
+				Path:       path,
+				Contents:   decoded,
+				Type:       "ENCODED",
+				Reason:     "base64-encoded flag content",
+				Confidence: 80,
 			})
 		}
 	}
@@ -37,10 +39,47 @@ func checkEncodedContent(path string, size int64) []Result {
 	if decoded := tryHex(content); decoded != "" {
 		if matchesFlag(decoded) {
 			results = append(results, Result{
-				Path:     path,
-				Contents: decoded,
-				Type:     "ENCODED",
-				Reason:   "hex-encoded flag content",
+				Path:       path,
+				Contents:   decoded,
+				Type:       "ENCODED",
+				Reason:     "hex-encoded flag content",
+				Confidence: 80,
+			})
+		}
+	}
+
+	if decoded := tryROT13(content); decoded != "" {
+		if matchesFlag(decoded) {
+			results = append(results, Result{
+				Path:       path,
+				Contents:   decoded,
+				Type:       "ENCODED",
+				Reason:     "ROT13-encoded flag content",
+				Confidence: 75,
+			})
+		}
+	}
+
+	if decoded := tryURLDecode(content); decoded != "" {
+		if matchesFlag(decoded) {
+			results = append(results, Result{
+				Path:       path,
+				Contents:   decoded,
+				Type:       "ENCODED",
+				Reason:     "URL-encoded flag content",
+				Confidence: 75,
+			})
+		}
+	}
+
+	if reversed := tryReverse(content); reversed != "" {
+		if matchesFlag(reversed) {
+			results = append(results, Result{
+				Path:       path,
+				Contents:   reversed,
+				Type:       "ENCODED",
+				Reason:     "reversed flag content",
+				Confidence: 70,
 			})
 		}
 	}
@@ -74,6 +113,46 @@ func tryHex(s string) string {
 		return ""
 	}
 	return string(decoded)
+}
+
+func tryROT13(s string) string {
+	hasLetter := false
+	decoded := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			hasLetter = true
+			return 'a' + (r-'a'+13)%26
+		case r >= 'A' && r <= 'Z':
+			hasLetter = true
+			return 'A' + (r-'A'+13)%26
+		}
+		return r
+	}, s)
+	if !hasLetter {
+		return ""
+	}
+	return decoded
+}
+
+func tryURLDecode(s string) string {
+	if !strings.Contains(s, "%") {
+		return ""
+	}
+	decoded, err := url.QueryUnescape(s)
+	if err != nil || decoded == s {
+		return ""
+	}
+	return decoded
+}
+
+func tryReverse(s string) string {
+	runes := []rune(s)
+	n := len(runes)
+	out := make([]rune, n)
+	for i := 0; i < n; i++ {
+		out[i] = runes[n-1-i]
+	}
+	return string(out)
 }
 
 func isPrintable(data []byte) bool {

@@ -38,6 +38,37 @@ func main() {
 	exfil := flag.String("exfil", "", "Write all found flags to this file")
 	depth := flag.Int("depth", 0, "Limit directory recursion depth (0 = unlimited)")
 	watch := flag.Bool("watch", false, "Keep running and alert when new flag files appear")
+	noSuspicious := flag.Bool("no-suspicious", false, "Hide suspicious-file results")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, `WraithFlag — Portable post-exploitation flag finder
+
+Usage:
+  wraithflag [options]
+
+Options:
+  --deep              Full filesystem crawl (default: quick common-paths scan)
+  --name <file>       Additional filename to hunt for (repeatable)
+  --pattern <regex>   Regex pattern to match inside files
+  --dir <path>        Start search from this directory only
+  --depth <n>         Limit directory recursion depth (0 = unlimited)
+  --exfil <file>      Write all found flags to this file
+  --watch             Keep running and alert when new flag files appear
+  --no-suspicious     Hide suspicious-file results
+  --no-color          Disable colored output
+  --quiet             Only print found flags, no banner/status
+  --json              Output results as JSON
+  --version           Print version and exit
+  -h, --help          Show this help
+
+Examples:
+  wraithflag                              Quick scan common flag locations
+  wraithflag --deep                       Full filesystem crawl
+  wraithflag --dir /var/www --depth 3     Scan specific dir with depth limit
+  wraithflag --pattern "SECRET_\w+"       Custom regex pattern search
+  wraithflag --no-suspicious --exfil /tmp/loot.txt
+`)
+	}
 
 	flag.Parse()
 
@@ -46,15 +77,22 @@ func main() {
 		os.Exit(0)
 	}
 
+	p := output.NewPrinter(*noColor || *jsonOut, *quiet)
+
 	cfg := hunter.Config{
-		Deep:       *deep,
-		ExtraNames: names,
-		Pattern:    *pattern,
-		Dir:        *dir,
-		MaxDepth:   *depth,
+		Deep:         *deep,
+		ExtraNames:   names,
+		Pattern:      *pattern,
+		Dir:          *dir,
+		MaxDepth:     *depth,
+		NoSuspicious: *noSuspicious,
 	}
 
-	p := output.NewPrinter(*noColor || *jsonOut, *quiet)
+	if !*quiet && !*jsonOut {
+		cfg.OnProgress = func(dir string) {
+			p.Info("Scanning: %s", dir)
+		}
+	}
 
 	if *watch {
 		runWatch(cfg, p, *jsonOut, *quiet, *exfil)
@@ -90,7 +128,7 @@ func runOnce(cfg hunter.Config, p *output.Printer, jsonOut, quiet bool) []hunter
 	}
 
 	start := time.Now()
-	results := hunter.Hunt(cfg)
+	results, stats := hunter.Hunt(cfg)
 	elapsed := time.Since(start)
 
 	if jsonOut {
@@ -100,8 +138,7 @@ func runOnce(cfg hunter.Config, p *output.Printer, jsonOut, quiet bool) []hunter
 			p.Result(r)
 		}
 		if !quiet {
-			fmt.Println()
-			p.Info("Scan complete — %d results found in %.2fs", len(results), elapsed.Seconds())
+			p.Summary(results, stats, elapsed.Seconds())
 		}
 	}
 
@@ -126,7 +163,7 @@ func runWatch(cfg hunter.Config, p *output.Printer, jsonOut, quiet bool, exfilPa
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	results := hunter.Hunt(cfg)
+	results, _ := hunter.Hunt(cfg)
 	var allResults []hunter.Result
 	for _, r := range results {
 		seen[r.Path] = true
@@ -155,7 +192,7 @@ func runWatch(cfg hunter.Config, p *output.Printer, jsonOut, quiet bool, exfilPa
 			}
 			return
 		case <-ticker.C:
-			newResults := hunter.Hunt(cfg)
+			newResults, _ := hunter.Hunt(cfg)
 			for _, r := range newResults {
 				if !seen[r.Path] {
 					seen[r.Path] = true
@@ -177,9 +214,12 @@ func runWatch(cfg hunter.Config, p *output.Printer, jsonOut, quiet bool, exfilPa
 func writeExfil(path string, results []hunter.Result, p *output.Printer) {
 	var sb strings.Builder
 	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("[%s] %s\n", r.Type, r.Path))
+		sb.WriteString(fmt.Sprintf("[%s] [%d%%] %s\n", r.Type, r.Confidence, r.Path))
 		if r.Contents != "" {
 			sb.WriteString(fmt.Sprintf("  %s\n", strings.TrimSpace(r.Contents)))
+		}
+		if r.MatchLine != "" {
+			sb.WriteString(fmt.Sprintf("  Match: %s\n", r.MatchLine))
 		}
 		if r.Reason != "" {
 			sb.WriteString(fmt.Sprintf("  Reason: %s\n", r.Reason))
