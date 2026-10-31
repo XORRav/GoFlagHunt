@@ -12,6 +12,15 @@ var hashPattern = regexp.MustCompile(`^[a-fA-F0-9]{32,64}\s*$`)
 
 var privilegedDirs []string
 
+var noisyDirs = []string{
+	".cache", ".cargo", ".local/lib", ".local/share/pipx",
+	".local/share/gem", ".local/share/npm",
+	"site-packages", "dist-info", "node_modules",
+	"__pycache__", ".npm", ".nvm", ".rustup",
+	"nuclei-templates", "go-build", ".gradle",
+	".m2", ".pip", ".venv", "venv",
+}
+
 func init() {
 	if runtime.GOOS == "windows" {
 		privilegedDirs = []string{
@@ -28,24 +37,41 @@ func init() {
 	}
 }
 
+func isNoisyPath(path string) bool {
+	lower := strings.ToLower(path)
+	for _, d := range noisyDirs {
+		if strings.Contains(lower, d) {
+			return true
+		}
+	}
+	return false
+}
+
 func isSuspicious(path string, info os.FileInfo) bool {
 	if info.Size() > 100 || info.Size() == 0 {
 		return false
 	}
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".txt" && ext != "" {
-		if ext != ".md" && ext != ".flag" && ext != ".secret" {
-			return false
-		}
-	}
-	if ext == "" {
-		base := filepath.Base(path)
-		if strings.HasPrefix(base, ".") {
-			return true
-		}
+
+	if isNoisyPath(path) {
 		return false
 	}
-	return inPrivilegedDir(path)
+
+	ext := strings.ToLower(filepath.Ext(path))
+	base := filepath.Base(path)
+
+	if ext == "" && strings.HasPrefix(base, ".") {
+		return true
+	}
+
+	if ext != ".txt" && ext != ".flag" && ext != ".secret" {
+		return false
+	}
+
+	if !inPrivilegedDir(path) {
+		return false
+	}
+
+	return true
 }
 
 func inPrivilegedDir(path string) bool {
@@ -65,20 +91,24 @@ func detectReason(path string, info os.FileInfo, contents string) string {
 
 	var reasons []string
 
+	isHash := hashPattern.MatchString(trimmed)
+	isHidden := strings.HasPrefix(filepath.Base(path), ".")
+	isPriv := inPrivilegedDir(path)
+
+	if !isHash && !isHidden {
+		return ""
+	}
+
 	if info.Size() < 100 {
 		reasons = append(reasons, "small file")
 	}
-
-	if hashPattern.MatchString(trimmed) {
+	if isHash {
 		reasons = append(reasons, "hash-like content")
 	}
-
-	if inPrivilegedDir(path) {
+	if isPriv {
 		reasons = append(reasons, "privileged directory")
 	}
-
-	base := filepath.Base(path)
-	if strings.HasPrefix(base, ".") {
+	if isHidden {
 		reasons = append(reasons, "hidden file")
 	}
 
